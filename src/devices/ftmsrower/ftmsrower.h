@@ -47,6 +47,7 @@ class ftmsrower : public rower {
     uint16_t watts() override;
     void forceResistance(resistance_t requestResistance);
     void parseConcept2Data(const QLowEnergyCharacteristic &characteristic, const QByteArray &newValue);
+    double applyCadenceCalibration(double rawCadence) const;
 
     QTimer *refresh;
 

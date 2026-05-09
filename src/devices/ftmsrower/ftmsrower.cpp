@@ -143,6 +143,17 @@ void ftmsrower::serviceDiscovered(const QBluetoothUuid &gatt) {
     emit debug(QStringLiteral("serviceDiscovered ") + gatt.toString());
 }
 
+double ftmsrower::applyCadenceCalibration(double rawCadence) const {
+    QSettings settings;
+    const double cadence_gain =
+        settings.value(QZSettings::cadence_gain, QZSettings::default_cadence_gain).toDouble();
+    const double cadence_offset =
+        settings.value(QZSettings::cadence_offset, QZSettings::default_cadence_offset).toDouble();
+
+    const double adjustedCadence = (rawCadence * cadence_gain) + cadence_offset;
+    return qMax(0.0, adjustedCadence);
+}
+
 void ftmsrower::parseConcept2Data(const QLowEnergyCharacteristic &characteristic, const QByteArray &newValue) {
     QDateTime now = QDateTime::currentDateTime();
     QSettings settings;
@@ -168,7 +179,7 @@ void ftmsrower::parseConcept2Data(const QLowEnergyCharacteristic &characteristic
             if (spm > 0) {
                 // Only check RowState if we've received it at least once
                 if (!pm5RowStateReceived || pm5RowState != 0) {
-                    Cadence = spm;
+                    Cadence = applyCadenceCalibration(spm);
                     lastStroke = now;
                 }
             }
@@ -364,7 +375,8 @@ void ftmsrower::characteristicChanged(const QLowEnergyCharacteristic &characteri
             m_watt = 0;
             Speed = 0;
         } else {
-            Cadence = ((uint8_t)newValue.at(index)) / cadence_divider;
+            const double rawCadence = ((uint8_t)newValue.at(index)) / cadence_divider;
+            Cadence = applyCadenceCalibration(rawCadence);
         }
 
         StrokesCount =
